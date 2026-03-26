@@ -1,0 +1,279 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum IsDeleted {
+  YES
+  NO
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Department {
+  HRGA
+  FINANCE
+  PROCUREMENT
+  OPERATIONS
+  PLANT
+  INFRASTRUCTURE
+  LOGISTICS
+  TRAINING_CENTER
+  MANAGEMENT
+}
+
+enum Branch {
+  HEAD_OFFICE
+  SENYIUR
+  MUARA_PAHU
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+enum Position {
+  DIRECTOR
+  MANAGER
+  SUPERINTENDENT
+  SUPERVISOR
+  JUNIOR_SUPERVISOR
+  WORKER
+}
+
+model User {
+  id        String   @id @default(uuid())
+  firstName String
+  lastName  String
+  phone     String
+  email     String   @unique
+  password  String
+  gender    Gender
+  department Department
+  branch     Branch    @default(HEAD_OFFICE)
+  position   Position
+  status     Status @default(ACTIVE)
+  role       Role     @default(USER)
+  isDeleted  IsDeleted @default(NO)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  budgetBalances BudgetBalance[]
+  rawatJalanBalances RawatJalanBalance[]
+  melahirkanBalances MelahirkanBalance[]
+  rawatInapEpisodes  RawatInapEpisode[]
+  budgetLedgers  BudgetLedger[]
+}
+
+enum BudgetTxnType {
+  ALLOCATE
+  SPEND
+  ADJUST
+}
+
+enum BudgetSpendCategory {
+  RAWAT_INAP
+  MCU
+  RAWAT_JALAN
+  BELI_OBAT
+  DOKTER_UMUM
+  OPERASI
+}
+
+enum BenefitType {
+  RAWAT_JALAN
+  RAWAT_INAP
+  MELAHIRKAN
+}
+
+enum RawatInapServiceType {
+  TARIF_KAMAR_DAYS
+  TANPA_OPERASI
+  OPERASI
+}
+
+model BudgetPolicy {
+  id           String   @id @default(uuid())
+  year         Int
+  position     Position
+  annualAmount Decimal
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([year, position])
+  @@index([year])
+}
+
+model RawatJalanPolicy {
+  id           String   @id @default(uuid())
+  year         Int
+  position     Position
+  annualAmount Decimal
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([year, position])
+  @@index([year])
+}
+
+model MelahirkanPolicy {
+  id           String   @id @default(uuid())
+  year         Int
+  position     Position
+  annualAmount Decimal
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([year, position])
+  @@index([year])
+}
+
+model RawatInapPolicy {
+  id          String               @id @default(uuid())
+  year        Int
+  position    Position
+  serviceType RawatInapServiceType
+  capAmount   Decimal
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([year, position, serviceType])
+  @@index([year])
+}
+
+model BudgetBalance {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year      Int
+  allocated Decimal
+  spent     Decimal
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, year])
+  @@index([year])
+}
+
+model RawatJalanBalance {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year      Int
+  allocated Decimal
+  spent     Decimal
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, year])
+  @@index([year])
+}
+
+model MelahirkanBalance {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year      Int
+  allocated Decimal
+  spent     Decimal
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, year])
+  @@index([year])
+}
+
+model RawatJalanMedical {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  budgetLedgers BudgetLedger[]
+}
+
+/// Opsi episode sakit Rawat Inap (dikelola admin; dipilih saat membuat episode per user).
+model RawatInapEpisodeOption {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  episodes RawatInapEpisode[]
+}
+
+model RawatInapEpisode {
+  id                       String                 @id @default(uuid())
+  userId                   String
+  user                     User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year                     Int
+  rawatInapEpisodeOptionId String
+  episodeOption            RawatInapEpisodeOption @relation(fields: [rawatInapEpisodeOptionId], references: [id])
+  createdAt                DateTime               @default(now())
+  updatedAt                DateTime               @updatedAt
+
+  balances      RawatInapEpisodeBalance[]
+  budgetLedgers BudgetLedger[]
+
+  @@index([userId, year])
+  @@index([year])
+  @@index([rawatInapEpisodeOptionId])
+}
+
+model RawatInapEpisodeBalance {
+  id          String               @id @default(uuid())
+  episodeId   String
+  episode     RawatInapEpisode     @relation(fields: [episodeId], references: [id], onDelete: Cascade)
+  serviceType RawatInapServiceType
+  allocated   Decimal
+  spent       Decimal
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@unique([episodeId, serviceType])
+  @@index([serviceType])
+}
+
+model BudgetLedger {
+  id        String       @id @default(uuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  year      Int
+  type      BudgetTxnType
+  amount    Decimal
+  spendCategory BudgetSpendCategory?
+  benefitType BenefitType?
+  rawatJalanMedicalId String?
+  rawatJalanMedical   RawatJalanMedical? @relation(fields: [rawatJalanMedicalId], references: [id], onDelete: SetNull)
+  rawatInapEpisodeId  String?
+  rawatInapEpisode    RawatInapEpisode?  @relation(fields: [rawatInapEpisodeId], references: [id], onDelete: SetNull)
+  rawatInapServiceType RawatInapServiceType?
+  documentUrl String?
+  documentPublicId String?
+  documentOriginalName String?
+  note      String?
+  createdAt DateTime     @default(now())
+
+  @@index([userId, year])
+  @@index([year])
+  @@index([benefitType, year])
+}
